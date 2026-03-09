@@ -92,6 +92,15 @@ Browser shows result with animated bars
 
 ## 🎯 API Endpoints
 
+
+## Live Demo
+
+Flask App (Render)
+https://fifa-wage-predictor-1.onrender.com
+
+Streamlit Dashboard
+https://fifa-wage-predictor.streamlit.app
+
 | Endpoint          | Method | Description              |
 |-------------------|--------|--------------------------|
 | `/`               | GET    | Web interface            |
