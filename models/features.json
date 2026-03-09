@@ -1,0 +1,34 @@
+{
+    "best_model_name": "Random Forest",
+    "best_r2": 0.9999753196734363,
+    "all_scores": {
+        "Linear Regression": 0.9096794771817897,
+        "Random Forest": 0.9999753196734363,
+        "HGB": 0.9998221433029569
+    },
+    "selected_features": [
+        "Overall",
+        "Potential",
+        "Value",
+        "Release Clause",
+        "Age",
+        "Wage",
+        "Position",
+        "Preferred Foot",
+        "Club"
+    ],
+    "numeric_features": [
+        "Overall",
+        "Potential",
+        "Value",
+        "Release Clause",
+        "Age",
+        "Wage"
+    ],
+    "categorical_features": [
+        "Position",
+        "Preferred Foot",
+        "Club"
+    ],
+    "target": "Wage_log"
+}

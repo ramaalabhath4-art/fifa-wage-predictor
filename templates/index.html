@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>⚽ FIFA Wage Predictor</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet"/>
+
+<!-- ═══════════════════ CSS ═══════════════════ -->
+<style>
+/* ── Variables ─────────────────────────────────────────── */
+:root {
+  --green:      #00ff87;
+  --green-glow: rgba(0,255,135,0.25);
+  --dark:       #07090e;
+  --card:       #0c1018;
+  --card2:      #10141d;
+  --border:     rgba(255,255,255,0.06);
+  --text:       #dce8f5;
+  --muted:      #4e5f72;
+  --red:        #ff3d5a;
+  --font-head:  'Bebas Neue', sans-serif;
+  --font-body:  'DM Sans', sans-serif;
+}
+
+/* ── Reset ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--dark);
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.5;
+}
+
+/* ── Pitch grid background ─────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    repeating-linear-gradient(0deg,   transparent, transparent 79px, rgba(0,255,135,0.022) 80px),
+    repeating-linear-gradient(90deg,  transparent, transparent 79px, rgba(0,255,135,0.022) 80px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Header ────────────────────────────────────────────── */
+header {
+  position: relative;
+  z-index: 1;
+  padding: 44px 48px 30px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-end;
+  gap: 22px;
+  background: linear-gradient(180deg, rgba(0,255,135,0.055) 0%, transparent 100%);
+}
+
+.header-ball {
+  font-size: 3.8rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 22px rgba(0,255,135,0.55));
+  animation: float 3s ease-in-out infinite;
+}
+@keyframes float {
+  0%,100% { transform: translateY(0);    }
+  50%      { transform: translateY(-6px);}
+}
+
+.header-text h1 {
+  font-family: var(--font-head);
+  font-size: clamp(2.8rem, 5.5vw, 5rem);
+  letter-spacing: 4px;
+  color: var(--green);
+  line-height: 1;
+  text-shadow: 0 0 50px var(--green-glow);
+}
+.header-text p {
+  color: var(--muted);
+  font-size: .85rem;
+  margin-top: 5px;
+  letter-spacing: .6px;
+}
+
+.model-chip {
+  margin-left: auto;
+  background: rgba(0,255,135,0.07);
+  border: 1px solid rgba(0,255,135,0.18);
+  border-radius: 10px;
+  padding: 10px 16px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.model-chip .chip-label {
+  font-size: .66rem;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+}
+.model-chip .chip-val {
+  font-size: .92rem;
+  font-weight: 600;
+  color: var(--green);
+  margin-top: 1px;
+}
+
+/* ── Layout ─────────────────────────────────────────────── */
+main {
+  position: relative;
+  z-index: 1;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 40px 24px 100px;
+}
+
+/* ── Section title ──────────────────────────────────────── */
+.sec-title {
+  font-family: var(--font-head);
+  font-size: 1.55rem;
+  letter-spacing: 2.5px;
+  color: var(--green);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sec-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(0,255,135,0.35), transparent);
+}
+
+/* ── Card ───────────────────────────────────────────────── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 28px;
+  margin-bottom: 28px;
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--green), transparent 70%);
+}
+
+/* ── Form grid ──────────────────────────────────────────── */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+@media (max-width: 720px) { .form-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 460px) { .form-grid { grid-template-columns: 1fr;    } }
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+
+label {
+  font-size: .7rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+input, select {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text);
+  padding: 10px 14px;
+  font-size: .92rem;
+  font-family: var(--font-body);
+  outline: none;
+  width: 100%;
+  appearance: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+input:focus, select:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(0,255,135,0.1);
+}
+input[type="number"]::-webkit-inner-spin-button { opacity: .4; }
+
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7'%3E%3Cpath d='M1 1l4.5 4.5L10 1' stroke='%234e5f72' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 13px center;
+  padding-right: 34px;
+  cursor: pointer;
+}
+select option { background: #10141d; }
+
+/* ── Predict button ─────────────────────────────────────── */
+.btn-predict {
+  margin-top: 22px;
+  width: 100%;
+  background: var(--green);
+  color: #07090e;
+  border: none;
+  border-radius: 11px;
+  padding: 15px;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: var(--font-body);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity .2s, box-shadow .2s, transform .1s;
+  box-shadow: 0 4px 28px rgba(0,255,135,0.28);
+}
+.btn-predict:hover  { opacity: .88; box-shadow: 0 6px 36px rgba(0,255,135,0.42); }
+.btn-predict:active { transform: scale(.99); }
+.btn-predict:disabled { opacity: .35; cursor: not-allowed; }
+
+/* Spinner */
+.spinner {
+  display: inline-block;
+  width: 15px; height: 15px;
+  border: 2px solid #07090e;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin .55s linear infinite;
+  vertical-align: middle;
+  margin-right: 7px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Error box */
+.err-box {
+  display: none;
+  margin-top: 14px;
+  background: rgba(255,61,90,0.1);
+  border: 1px solid rgba(255,61,90,0.3);
+  border-radius: 10px;
+  padding: 12px 16px;
+  color: var(--red);
+  font-size: .87rem;
+}
+
+/* ── Result card ────────────────────────────────────────── */
+#result {
+  display: none;
+  animation: fadeUp .45s cubic-bezier(.22,1,.36,1);
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 22px;
+  align-items: center;
+}
+@media (max-width: 600px) { .result-grid { grid-template-columns: 1fr; } }
+
+/* Left: wage box */
+.wage-box {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px 18px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.w-label {
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+}
+.w-amount {
+  font-family: var(--font-head);
+  font-size: 3.1rem;
+  line-height: 1;
+  color: var(--green);
+  letter-spacing: 2px;
+  text-shadow: 0 0 30px rgba(0,255,135,0.45);
+}
+.w-unit { font-size: .75rem; color: var(--muted); margin-top: -6px; }
+
+.tier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: .84rem;
+  letter-spacing: .5px;
+}
+.w-meta { font-size: .68rem; color: var(--muted); line-height: 1.6; }
+
+/* Right: probability bars */
+.probs-box { display: flex; flex-direction: column; gap: 2px; }
+.probs-heading {
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.tier-row {
+  display: grid;
+  grid-template-columns: 112px 1fr 46px;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+}
+.tier-name {
+  font-size: .82rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.bar-track {
+  height: 11px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  width: 0;
+  transition: width .75s cubic-bezier(.4,0,.2,1);
+}
+.pct-val {
+  font-size: .8rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+/* ── Divider ────────────────────────────────────────────── */
+.divider { height: 1px; background: var(--border); margin: 10px 0 28px; }
+
+/* ── Batch section ──────────────────────────────────────── */
+.drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: 14px;
+  padding: 34px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  user-select: none;
+}
+.drop-zone:hover {
+  border-color: var(--green);
+  background: rgba(0,255,135,0.03);
+}
+.drop-icon { font-size: 2.6rem; margin-bottom: 8px; }
+.drop-text { color: var(--muted); font-size: .88rem; }
+.drop-sub  { font-size: .72rem; color: var(--muted); margin-top: 5px; opacity: .55; }
+
+#batchResult { margin-top: 20px; }
+.batch-meta {
+  font-size: .78rem;
+  color: var(--muted);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.btn-dl {
+  background: transparent;
+  border: 1px solid var(--green);
+  color: var(--green);
+  border-radius: 7px;
+  padding: 6px 16px;
+  font-size: .78rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: background .2s;
+}
+.btn-dl:hover { background: rgba(0,255,135,0.1); }
+
+.tbl-wrap { overflow-x: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .8rem;
+}
+th {
+  background: rgba(0,255,135,0.07);
+  color: var(--green);
+  padding: 9px 12px;
+  text-align: left;
+  font-weight: 600;
+  letter-spacing: .5px;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+tr:hover td { background: rgba(255,255,255,0.02); }
+.td-wage { color: var(--green); font-weight: 600; }
+
+/* ── Toast ──────────────────────────────────────────────── */
+#toast {
+  position: fixed;
+  bottom: 26px; right: 26px;
+  background: var(--card);
+  border: 1px solid var(--green);
+  color: var(--green);
+  padding: 11px 18px;
+  border-radius: 10px;
+  font-size: .83rem;
+  font-weight: 600;
+  display: none;
+  z-index: 999;
+  animation: fadeUp .3s ease;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<header>
+  <div class="header-ball">⚽</div>
+  <div class="header-text">
+    <h1>FIFA Wage Predictor</h1>
+    <p>Real predictions powered by your trained Machine Learning model</p>
+  </div>
+  <div class="model-chip">
+    <div class="chip-label">Model</div>
+    <div class="chip-val">{{ model_name }}</div>
+    <div class="chip-label" style="margin-top:6px">R² Score</div>
+    <div class="chip-val">{{ "%.4f"|format(r2) }}</div>
+  </div>
+</header>
+
+<!-- ═══════════════════ MAIN ═══════════════════ -->
+<main>
+
+  <!-- ── Single Player ───────────────────────── -->
+  <div class="sec-title">⚡ Single Player Prediction</div>
+  <div class="card">
+    <div class="form-grid">
+
+      <div class="field">
+        <label>Overall Rating</label>
+        <input type="number" id="overall" value="80" min="46" max="99"/>
+      </div>
+      <div class="field">
+        <label>Potential</label>
+        <input type="number" id="potential" value="85" min="48" max="99"/>
+      </div>
+      <div class="field">
+        <label>Age</label>
+        <input type="number" id="age" value="24" min="15" max="45"/>
+      </div>
+
+      <div class="field">
+        <label>Market Value (€K)</label>
+        <input type="number" id="value" value="30000" min="0" step="500"/>
+      </div>
+      <div class="field">
+        <label>Release Clause (€K)</label>
+        <input type="number" id="release" value="60000" min="0" step="500"/>
+      </div>
+      <div class="field">
+        <label>Known Wage — 0 = auto-estimate</label>
+        <input type="number" id="wage" value="0" min="0"/>
+      </div>
+
+      <div class="field">
+        <label>Club</label>
+        <select id="club"></select>
+      </div>
+      <div class="field">
+        <label>Position</label>
+        <select id="position"></select>
+      </div>
+      <div class="field">
+        <label>Preferred Foot</label>
+        <select id="foot">
+          <option>Right</option>
+          <option>Left</option>
+        </select>
+      </div>
+
+    </div>
+    <button class="btn-predict" id="predictBtn" onclick="predictSingle()">
+      ⚡ Predict Wage
+    </button>
+    <div class="err-box" id="errBox"></div>
+  </div>
+
+  <!-- ── Result ───────────────────────────────── -->
+  <div id="result">
+    <div class="sec-title">📊 Result</div>
+    <div class="card">
+      <div class="result-grid">
+
+        <div class="wage-box">
+          <div class="w-label">Predicted Weekly Wage</div>
+          <div class="w-amount" id="wageAmt">—</div>
+          <div class="w-unit">€K per week</div>
+          <span class="tier-badge" id="tierBadge">—</span>
+          <div class="w-meta" id="wMeta"></div>
+        </div>
+
+        <div class="probs-box">
+          <div class="probs-heading">Wage-Tier Probabilities</div>
+          <div id="tierBars"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Batch ────────────────────────────────── -->
+  <div class="divider"></div>
+  <div class="sec-title">📂 Batch Prediction</div>
+  <div class="card">
+    <div class="drop-zone" onclick="document.getElementById('fileInput').click()">
+      <div class="drop-icon">📂</div>
+      <div class="drop-text">Click to upload a CSV file</div>
+      <div class="drop-sub">
+        Required columns: Overall · Potential · Value · Release Clause · Age · Wage · Position · Preferred Foot · Club
+      </div>
+    </div>
+    <input type="file" id="fileInput" accept=".csv" style="display:none" onchange="handleBatch(event)"/>
+    <div id="batchResult"></div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<!-- ═══════════════════ JavaScript ═══════════════════ -->
+<script>
+/* ── Dropdown data ──────────────────────────────────────── */
+const CLUBS = [' SSV Jahn Regensburg','1. FC Heidenheim 1846','1. FC Kaiserslautern','1. FC Köln','1. FC Magdeburg','1. FC Nürnberg','1. FC Union Berlin','1. FSV Mainz 05','AC Ajaccio','AC Horsens','AD Alcorcón','ADO Den Haag','AEK Athens','AFC Wimbledon','AIK','AJ Auxerre','AS Béziers','AS Monaco','AS Nancy Lorraine','AS Saint-Étienne','AZ Alkmaar','Aalborg BK','Aarhus GF','Aberdeen','Accrington Stanley','Adelaide United','Ajax','Akhisar Belediyespor','Al Ahli','Al Batin','Al Faisaly','Al Fateh','Al Fayha','Al Hazem','Al Hilal','Al Ittihad','Al Nassr','Al Qadisiyah','Al Raed','Al Shabab','Al Taawoun','Al Wehda','Alanyaspor','Albacete BP','Alianza Petrolera','Amiens SC','América FC (Minas Gerais)','América de Cali','Angers SCO','Antalyaspor','Argentinos Juniors','Arka Gdynia','Arsenal','Ascoli','Aston Villa','Atalanta','Athletic Club de Bilbao','Atiker Konyaspor','Atlanta United','Atlético Bucaramanga','Atlético Huila','Atlético Madrid','Atlético Mineiro','Atlético Nacional','Atlético Paranaense','Atlético Tucumán','Audax Italiano','BB Erzurumspor','BK Häcken','BSC Young Boys','Bahia','Barnsley','Bayer 04 Leverkusen','Beijing Renhe FC','Beijing Sinobo Guoan FC','Belgrano de Córdoba','Benevento','Beşiktaş JK','Birmingham City','Blackburn Rovers','Blackpool','Boavista FC','Boca Juniors','Bohemian FC','Bologna','Bolton Wanderers','Borussia Dortmund','Borussia Mönchengladbach','Botafogo','Bournemouth','Boyacá Chicó FC','Bradford City','Bray Wanderers','Brentford','Brescia','Brighton & Hove Albion','Brisbane Roar','Bristol City','Bristol Rovers','Brøndby IF','Burnley','Bursaspor','Burton Albion','Bury','CA Osasuna','CD Antofagasta','CD Aves','CD Everton de Viña del Mar','CD Feirense','CD Huachipato','CD Leganés','CD Lugo','CD Nacional','CD Numancia',"CD O'Higgins",'CD Palestino','CD Tenerife','CD Tondela','CD Universidad de Concepción','CF Rayo Majadahonda','CF Reus Deportiu','Cagliari','Cambridge United','Cardiff City','Carlisle United','Carpi','Ceará Sporting Club','Celtic','Central Coast Mariners','Cerezo Osaka','Chamois Niortais Football Club','Changchun Yatai FC','Chapecoense','Charlton Athletic','Chelsea','Cheltenham Town','Chicago Fire','Chievo Verona','Chongqing Dangdai Lifan FC SWM Team','Cittadella','Clermont Foot 63','Club América','Club Atlas','Club Atlético Aldosivi','Club Atlético Banfield','Club Atlético Colón','Club Atlético Huracán','Club Atlético Lanús','Club Atlético Talleres','Club Atlético Tigre','Club Brugge KV','Club Deportes Temuco','Club León','Club Necaxa','Club Tijuana','Clube Sport Marítimo','Colchester United','Colo-Colo','Colorado Rapids','Columbus Crew SC','Cork City','Cosenza','Coventry City','Cracovia','Crawley Town','Crewe Alexandra','Crotone','Cruz Azul','Cruzeiro','Crystal Palace','Curicó Unido','Cádiz CF','Córdoba CF','DC United','DSC Arminia Bielefeld','Daegu FC','Dalian YiFang FC','Dalkurd FF','De Graafschap','Defensa y Justicia','Deportes Iquique','Deportes Tolima','Deportivo Alavés','Deportivo Cali','Deportivo Pasto','Deportivo Toluca','Deportivo de La Coruña','Derby County','Derry City','Dijon FCO','Dinamo Zagreb','Djurgårdens IF','Doncaster Rovers','Dundalk','Dundee FC','Dynamo Kyiv','ESTAC Troyes','Eintracht Braunschweig','Eintracht Frankfurt','Elche CF','Empoli','En Avant de Guingamp','Envigado FC','Esbjerg fB','Estudiantes de La Plata','Ettifaq FC','Everton','Excelsior','Exeter City','Extremadura UD','FC Admira Wacker Mödling','FC Augsburg','FC Barcelona','FC Basel 1893','FC Bayern München','FC Carl Zeiss Jena','FC Dallas','FC Emmen','FC Energie Cottbus','FC Erzgebirge Aue','FC Girondins de Bordeaux','FC Groningen','FC Hansa Rostock','FC Ingolstadt 04','FC København','FC Lorient','FC Lugano','FC Luzern','FC Metz','FC Midtjylland','FC Nantes','FC Nordsjælland','FC Porto','FC Red Bull Salzburg','FC Schalke 04','FC Seoul','FC Sion','FC Sochaux-Montbéliard','FC St. Gallen','FC St. Pauli','FC Thun','FC Tokyo','FC Utrecht','FC Wacker Innsbruck','FC Würzburger Kickers','FC Zürich','FK Austria Wien','FK Bodø/Glimt','FK Haugesund','FSV Zwickau','Fenerbahçe SK','Feyenoord','Fiorentina','Fleetwood Town','Fluminense','Foggia','Forest Green Rovers','Fortuna Düsseldorf','Fortuna Sittard','Frosinone','Fulham','GD Chaves','GFC Ajaccio','GIF Sundsvall','Galatasaray SK','Gamba Osaka','Gangwon FC','Genoa','Getafe CF','Gillingham','Gimnasia y Esgrima La Plata','Gimnàstic de Tarragona','Girona FC','Godoy Cruz','Granada CF','Grasshopper Club Zürich','Grenoble Foot 38','Grimsby Town','Grêmio','Guadalajara','Guangzhou Evergrande Taobao FC','Guangzhou R&F; FC','Guizhou Hengfeng FC','Gyeongnam FC','Górnik Zabrze','Göztepe SK','HJK Helsinki','Hallescher FC','Hamburger SV','Hamilton Academical FC','Hammarby IF','Hannover 96','Heart of Midlothian','Hebei China Fortune FC','Hellas Verona','Henan Jianye FC','Heracles Almelo','Hertha BSC','Hibernian','Hobro IK','Hokkaido Consadole Sapporo','Holstein Kiel','Houston Dynamo','Huddersfield Town','Hull City','IF Brommapojkarna','IF Elfsborg','IFK Göteborg','IFK Norrköping','IK Sirius','IK Start','Incheon United FC','Independiente','Independiente Medellín','Independiente Santa Fe','Inter','Internacional','Ipswich Town','Itagüí Leones FC','Jagiellonia Białystok','Jaguares de Córdoba','Jeju United FC','Jeonbuk Hyundai Motors','Jeonnam Dragons','Jiangsu Suning FC','Junior FC','Juventus','Júbilo Iwata','KAA Gent','KAS Eupen','KFC Uerdingen 05','KRC Genk','KSV Cercle Brugge','KV Kortrijk','KV Oostende','Kaizer Chiefs','Kalmar FF','Karlsruher SC','Kashima Antlers','Kashiwa Reysol','Kasimpaşa SK','Kawasaki Frontale','Kayserispor','Kilmarnock','Korona Kielce','Kristiansund BK','LA Galaxy','LASK Linz','LOSC Lille','La Berrichonne de Châteauroux','La Equidad','Lazio','Le Havre AC','Lecce','Lech Poznań','Lechia Gdańsk','Leeds United','Legia Warszawa','Leicester City','Levante UD','Lillestrøm SK','Limerick FC','Lincoln City','Liverpool','Livingston FC','Livorno','Lobos BUAP','Lokomotiv Moscow','Los Angeles FC','Luton Town','MKE Ankaragücü','MSV Duisburg','Macclesfield Town','Malmö FF','Manchester City','Manchester United','Mansfield Town','Medipol Başakşehir FK','Melbourne City FC','Melbourne Victory','Middlesbrough','Miedź Legnica','Milan','Millonarios FC','Millwall','Milton Keynes Dons','Minnesota United FC','Molde FK','Monarcas Morelia','Monterrey','Montpellier HSC','Montreal Impact','Morecambe','Moreirense FC','Motherwell','Málaga CF','NAC Breda','Nagoya Grampus','Napoli','Neuchâtel Xamax','New England Revolution','New York City FC','New York Red Bulls','Newcastle Jets','Newcastle United',"Newell's Old Boys",'Newport County','Northampton Town','Norwich City','Nottingham Forest','Notts County','Nîmes Olympique','OGC Nice','Odds BK','Odense Boldklub','Ohod Club','Oldham Athletic','Olympiacos CFP','Olympique Lyonnais','Olympique de Marseille','Once Caldas','Orlando City SC','Orlando Pirates','Os Belenenses','Oxford United','PAOK','PEC Zwolle','PFC CSKA Moscow','PSV','Pachuca','Padova','Palermo','Panathinaikos FC','Paraná','Paris FC','Paris Saint-Germain','Parma','Patriotas Boyacá FC','Patronato','Perth Glory','Perugia','Pescara','Peterborough United','Philadelphia Union','Piast Gliwice','Plymouth Argyle','Pogoń Szczecin','Pohang Steelers','Port Vale','Portimonense SC','Portland Timbers','Portsmouth','Preston North End','Puebla FC','Queens Park Rangers','Querétaro','RB Leipzig','RC Celta','RC Strasbourg Alsace','RCD Espanyol','RCD Mallorca','RSC Anderlecht','Racing Club','Racing Club de Lens','Randers FC','Rangers FC','Ranheim Fotball','Rayo Vallecano','Reading','Real Betis','Real Madrid','Real Oviedo','Real Salt Lake','Real Sociedad','Real Sporting de Gijón','Real Valladolid CF','Real Zaragoza','Red Star FC','Rio Ave FC','Rionegro Águilas','River Plate','Rochdale','Roma','Rosario Central','Rosenborg BK','Rotherham United','Royal Antwerp FC','Royal Excel Mouscron','SC Braga','SC Fortuna Köln','SC Freiburg','SC Heerenveen','SC Paderborn 07','SC Preußen Münster','SCR Altach','SD Eibar','SD Huesca','SG Dynamo Dresden','SG Sonnenhof Großaspach','SK Brann','SK Rapid Wien','SK Slavia Praha','SK Sturm Graz','SKN St. Pölten','SL Benfica','SPAL','SV Darmstadt 98','SV Mattersburg','SV Meppen','SV Sandhausen','SV Wehen Wiesbaden','SV Werder Bremen','SV Zulte-Waregem','Sagan Tosu','Sampdoria','San Jose Earthquakes','San Lorenzo de Almagro','San Luis de Quillota','San Martin de Tucumán','San Martín de San Juan','Sandefjord Fotball','Sanfrecce Hiroshima','Sangju Sangmu FC','Santa Clara','Santos','Santos Laguna','Sarpsborg 08 FF','Sassuolo','Scunthorpe United','Seattle Sounders FC','Sevilla FC','Shakhtar Donetsk','Shamrock Rovers','Shandong Luneng TaiShan FC','Shanghai Greenland Shenhua FC','Shanghai SIPG FC','Sheffield United','Sheffield Wednesday','Shimizu S-Pulse','Shonan Bellmare','Shrewsbury','Sint-Truidense VV','Sivasspor','Sligo Rovers','Southampton','Southend United','SpVgg Greuther Fürth','SpVgg Unterhaching','Sparta Praha','Spartak Moscow','Spezia','Sport Club do Recife','Sporting CP','Sporting Kansas City','Sporting Lokeren','Sporting de Charleroi','St. Johnstone FC','St. Mirren',"St. Patrick's Athletic",'Stabæk Fotball','Stade Brestois 29','Stade Malherbe Caen','Stade Rennais FC','Stade de Reims','Standard de Liège','Stevenage','Stoke City','Strømsgodset IF','Sunderland','Suwon Samsung Bluewings','Swansea City','Swindon Town','Sydney FC','SønderjyskE','TSG 1899 Hoffenheim','TSV 1860 München','TSV Hartberg','Tianjin Quanjian FC','Tianjin TEDA FC','Tiburones Rojos de Veracruz','Tigres U.A.N.L.','Torino','Toronto FC','Tottenham Hotspur','Toulouse Football Club','Trabzonspor','Tranmere Rovers','Trelleborgs FF','Tromsø IL','U.N.A.M.','UD Almería','UD Las Palmas','US Cremonese','US Orléans Loiret Football','US Salernitana 1919','Udinese','Ulsan Hyundai FC','Universidad Católica','Universidad de Chile','Unión Española','Unión La Calera','Unión de Santa Fe','Urawa Red Diamonds','V-Varen Nagasaki','VVV-Venlo','Valencia CF','Valenciennes FC','Vancouver Whitecaps FC','Vegalta Sendai','Vejle Boldklub','Vendsyssel FF','Venezia FC','VfB Stuttgart','VfL Bochum 1848','VfL Osnabrück','VfL Sportfreunde Lotte','VfL Wolfsburg','VfR Aalen','Viktoria Plzeň','Villarreal CF','Vissel Kobe','Vitesse','Vitória','Vitória Guimarães','Vitória de Setúbal','Vålerenga Fotball','Vélez Sarsfield','Waasland-Beveren','Walsall','Waterford FC','Watford','Wellington Phoenix','West Bromwich Albion','West Ham United','Western Sydney Wanderers','Wigan Athletic','Willem II','Wisła Kraków','Wisła Płock','Wolfsberger AC','Wolverhampton Wanderers','Wycombe Wanderers','Yeni Malatyaspor','Yeovil Town','Yokohama F. Marinos','Zagłębie Lubin','Zagłębie Sosnowiec','Çaykur Rizespor','Örebro SK','Östersunds FK','Śląsk Wrocław'];
+const POSITIONS = ['CAM','CB','CDM','CF','CM','GK','LAM','LB','LCB','LCM','LDM','LF','LM','LS','LW','LWB','RAM','RB','RCB','RCM','RDM','RF','RM','RS','RW','RWB','ST'];
+
+// Populate clubs
+const cs = document.getElementById('club');
+CLUBS.forEach(c => {
+  const o = document.createElement('option');
+  o.value = o.textContent = c;
+  if (c === 'Arsenal') o.selected = true;
+  cs.appendChild(o);
+});
+
+// Populate positions
+const ps = document.getElementById('position');
+POSITIONS.forEach(p => {
+  const o = document.createElement('option');
+  o.value = o.textContent = p;
+  if (p === 'CM') o.selected = true;
+  ps.appendChild(o);
+});
+
+/* ── Tier order for display ──────────────────────────────── */
+const TIER_ORDER = [
+  { label:'Low',       icon:'🟤', color:'#a0522d' },
+  { label:'Below Avg', icon:'🔵', color:'#4682b4' },
+  { label:'Average',   icon:'🟢', color:'#2e8b57' },
+  { label:'Above Avg', icon:'🟡', color:'#daa520' },
+  { label:'High',      icon:'🟠', color:'#ff8c00' },
+  { label:'Elite',     icon:'🔴', color:'#dc143c' },
+];
+
+/* ── Single player predict → Flask /predict ──────────────── */
+async function predictSingle() {
+  const btn = document.getElementById('predictBtn');
+  const err = document.getElementById('errBox');
+  err.style.display = 'none';
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Predicting...';
+
+  const payload = {
+    "Overall":        +document.getElementById('overall').value,
+    "Potential":      +document.getElementById('potential').value,
+    "Age":            +document.getElementById('age').value,
+    "Value":          +document.getElementById('value').value,
+    "Release Clause": +document.getElementById('release').value,
+    "Wage":           +document.getElementById('wage').value,
+    "Club":            document.getElementById('club').value,
+    "Position":        document.getElementById('position').value,
+    "Preferred Foot":  document.getElementById('foot').value,
+  };
+
+  try {
+    const res  = await fetch('/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`Server error ${res.status}`);
+    const data = await res.json();
+    showResult(data);
+  } catch (e) {
+    err.textContent = '❌ ' + e.message;
+    err.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '⚡ Predict Wage';
+  }
+}
+
+/* ── Render result ───────────────────────────────────────── */
+function showResult(d) {
+  const resultEl = document.getElementById('result');
+  resultEl.style.display = 'block';
+
+  // Count-up animation
+  const wEl = document.getElementById('wageAmt');
+  let cur = 0;
+  const step = d.predicted_wage / 40;
+  const timer = setInterval(() => {
+    cur = Math.min(cur + step, d.predicted_wage);
+    wEl.textContent = '€' + cur.toLocaleString('de-DE', { maximumFractionDigits: 0 });
+    if (cur >= d.predicted_wage) clearInterval(timer);
+  }, 18);
+
+  // Badge
+  const badge = document.getElementById('tierBadge');
+  badge.textContent = `${d.tier_icon} ${d.tier_label}`;
+  badge.style.cssText =
+    `background:${d.tier_color}22;color:${d.tier_color};border:1px solid ${d.tier_color}55;`;
+
+  // Meta info
+  document.getElementById('wMeta').innerHTML =
+    `Model: <b>${d.model_name}</b><br>R²: ${d.r2.toFixed(4)}&nbsp;&nbsp;·&nbsp;&nbsp;Wage used: ${d.wage_used}K<br>Log-wage: ${d.predicted_log}`;
+
+  // Probability bars
+  const barsEl = document.getElementById('tierBars');
+  barsEl.innerHTML = '';
+  TIER_ORDER.forEach(t => {
+    const pct = d.tier_probs[t.label] || 0;
+    if (!pct) return;
+    const row = document.createElement('div');
+    row.className = 'tier-row';
+    const safeId = 'bf-' + t.label.replace(/\s/g, '');
+    row.innerHTML = `
+      <span class="tier-name" style="color:${t.color}">${t.icon} ${t.label}</span>
+      <div class="bar-track">
+        <div class="bar-fill" id="${safeId}" style="background:${t.color}"></div>
+      </div>
+      <span class="pct-val" style="color:${t.color}">${pct}%</span>`;
+    barsEl.appendChild(row);
+    setTimeout(() => {
+      const el = document.getElementById(safeId);
+      if (el) el.style.width = Math.min(pct, 100) + '%';
+    }, 80);
+  });
+
+  resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ── Batch CSV → Flask /predict_batch ────────────────────── */
+function handleBatch(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    const rows    = parseCSV(ev.target.result);
+    if (!rows.length) { showToast('Empty or invalid CSV'); return; }
+
+    const required = ['Overall','Potential','Value','Release Clause','Age','Wage','Position','Preferred Foot','Club'];
+    const missing  = required.filter(c => !Object.keys(rows[0]).includes(c));
+    if (missing.length) { showToast('Missing columns: ' + missing.join(', ')); return; }
+
+    document.getElementById('batchResult').innerHTML =
+      '<p style="color:var(--muted);font-size:.85rem;margin-top:10px">⏳ Running predictions...</p>';
+
+    try {
+      const res  = await fetch('/predict_batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ players: rows }),
+      });
+      const data = await res.json();
+      window._batchData = data.results;
+      renderBatchTable(data.results);
+    } catch (err) {
+      showToast('Error: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function renderBatchTable(data) {
+  if (!data || !data.length) return;
+  const hideCols = new Set(['Tier_Color']);
+  const cols     = Object.keys(data[0]).filter(c => !hideCols.has(c));
+  const slice    = data.slice(0, 50);
+
+  let html = `<div class="batch-meta">
+    Showing first ${Math.min(data.length,50)} of ${data.length} rows
+    <button class="btn-dl" onclick="downloadBatch()">⬇ Download All</button>
+  </div><div class="tbl-wrap"><table><tr>`;
+
+  cols.forEach(c => { html += `<th>${c}</th>`; });
+  html += '</tr>';
+  slice.forEach(row => {
+    html += '<tr>' + cols.map(c => {
+      if (c === 'Predicted_Wage')
+        return `<td class="td-wage">€${row[c]}K</td>`;
+      if (c === 'Wage_Tier')
+        return `<td style="color:${row.Tier_Color||'#fff'};font-weight:600">${row[c]}</td>`;
+      return `<td>${row[c] ?? ''}</td>`;
+    }).join('') + '</tr>';
+  });
+  html += '</table></div>';
+  document.getElementById('batchResult').innerHTML = html;
+}
+
+function downloadBatch() {
+  if (!window._batchData) return;
+  const cols = Object.keys(window._batchData[0]).filter(c => c !== 'Tier_Color');
+  const csv  = [
+    cols.join(','),
+    ...window._batchData.map(r => cols.map(c => `"${r[c] ?? ''}"`).join(','))
+  ].join('\n');
+  const a = document.createElement('a');
+  a.href     = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'fifa_predictions.csv';
+  a.click();
+}
+
+/* ── CSV parser ──────────────────────────────────────────── */
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+  return lines.slice(1).map(line => {
+    const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+    const obj  = {};
+    headers.forEach((h, i) => { obj[h] = vals[i] ?? ''; });
+    return obj;
+  });
+}
+
+/* ── Toast notification ──────────────────────────────────── */
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent  = msg;
+  t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 3200);
+}
+</script>
+</body>
+</html>
